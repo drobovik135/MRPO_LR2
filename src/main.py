@@ -9,6 +9,40 @@ def insert_data(cursor, table_name, columns, data):
     cursor.execute(query, data)
 
 
+def data_generate(conn):
+    cur = conn.cursor()
+
+    statuses = "procurementstatuses"
+    providers = "providers"
+    procurements = "souvenirprocurements"
+    ps = "ProcurementSouvenirs"
+    souvenir = "Souvenirs"
+    stories = "SouvenirStores"
+
+    cur.execute(f"INSERT INTO {statuses} (Name) VALUES ('cool') RETURNING ID")
+    statusId = cur.fetchone()
+
+    cur.execute(
+        f"INSERT INTO {providers} (Name, Email, ContactPerson) VALUES ('Shop1', 'test@mail.ru', 'Dima') RETURNING ID")
+    providerId = cur.fetchone()
+
+    cur.execute(
+        f"INSERT INTO {procurements} (IdProvider, Data, IdStatus) VALUES ('{providerId[0]}', '2023-02-05', '{statusId[0]}') RETURNING ID")
+    procurementsId = cur.fetchone()
+
+    cur.execute(f"SELECT ID FROM {souvenir} WHERE Id = '354'")
+    souvenirId = cur.fetchone()
+    cur.execute(
+        f"INSERT INTO {ps} (IdSouvenir, IdProcurement, Amount, Price) VALUES ('{souvenirId[0]}', '{procurementsId[0]}', '50', '10') RETURNING ID")
+    psId = cur.fetchone()
+
+    cur.execute(
+        f"INSERT INTO {stories} (IdProcurement, IdSouvenir, Amount) VALUES ('{procurementsId[0]}', '{souvenirId[0]}', '10') RETURNING ID")
+    storiesId = cur.fetchone()
+
+    conn.commit()
+
+
 def execute_sql_file(connection, file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
         sql_commands = file.read()
@@ -122,6 +156,8 @@ def xlsx_reader(conn, file):
             print(f"Столбцы: {row}")
             print(
                 f"Значения: {[float(x) if pd.notna(x) else None for x in [row['weight'], row['qtypics'], row['dealerPrice'], row['price']]]}")
+        except Exception as e:
+            print(f"Ошибка в заполнении данных : {e}")
 
     conn.commit()
 
@@ -155,7 +191,16 @@ def main():
     init_table(conn)
 
     print("Чтение данных")
-    data_reader(conn)
+    try:
+        data_reader(conn)
+    except Exception as e:
+        print("Ошибка чтения данных")
+
+    print("Генерация данных")
+    try:
+        data_generate(conn)
+    except:
+        print("Ошибка генерации данных")
 
     conn.close()
 
